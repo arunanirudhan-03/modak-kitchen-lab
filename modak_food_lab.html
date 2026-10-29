@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MODAK Food Lab - Production Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-teak: #18110c;
+            --bg-card: #241b14;
+            --border-teak: #3d2b1f;
+            --accent-marigold: #ff6f00;
+            --accent-brass: #cda434;
+            --text-cream: #fdfbf7;
+            --success-tulsi: #2e7d32;
+            --alert-kumkum: #d84315;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-teak);
+            color: var(--text-cream);
+            margin: 0;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        .font-mono-code { font-family: 'JetBrains Mono', monospace; }
+        .hidden { display: none !important; }
+        
+        /* Temple Aesthetics */
+        .shadow-golden { box-shadow: 0 4px 20px rgba(205, 164, 52, 0.15); }
+        .shadow-golden-lg { box-shadow: 0 8px 30px rgba(205, 164, 52, 0.25); }
+        .border-brass { border-color: var(--accent-brass); }
+        .bg-card-teak { background-color: var(--bg-card); }
+        .text-brass { color: var(--accent-brass); }
+        .text-marigold { color: var(--accent-marigold); }
+        .bg-marigold { background-color: var(--accent-marigold); color: var(--bg-teak); }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-teak); }
+        ::-webkit-scrollbar-thumb { background: var(--border-teak); border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-brass); }
+
+        @keyframes burner-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 111, 0, 0.45); border-color: var(--accent-marigold); }
+            70% { box-shadow: 0 0 0 12px rgba(255, 111, 0, 0); border-color: var(--accent-brass); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 111, 0, 0); border-color: var(--accent-marigold); }
+        }
+        .burner-active-ring { animation: burner-pulse 2s infinite; }
+        
+        @keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .animate-marquee { display: inline-block; animation: marquee 15s linear infinite; white-space: nowrap; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-[#cda434] selection:text-[#18110c]">
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 -translate-y-20 opacity-0 z-[200] transition-all duration-300 bg-card-teak border border-brass text-cream px-6 py-3 rounded-full shadow-golden flex items-center gap-3 text-sm font-bold pointer-events-none">
+        <span id="toast-icon">✨</span>
+        <span id="toast-msg">Action completed</span>
+    </div>
+
+    <!-- GLOBAL HEADER -->
+    <header class="bg-[#18110c]/95 backdrop-blur-md border-b border-[#3d2b1f] px-4 lg:px-8 py-3 sticky top-0 z-40 shadow-golden">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="switchRole('home')">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff6f00] to-[#cda434] text-[#18110c] font-black text-xl flex items-center justify-center shadow-lg font-mono-code">M</div>
+                <div>
+                    <h1 class="font-black text-sm md:text-lg tracking-widest text-[#cda434] uppercase">Modak Food Lab</h1>
+                    <p class="text-[10px] text-[#fdfbf7]/70 tracking-widest uppercase hidden md:block">Production Control</p>
+                </div>
+            </div>
+
+            <!-- PORTAL SWITCHER & EXIT -->
+            <div class="flex items-center bg-[#241b14] p-1 rounded-full border border-[#3d2b1f] gap-1 shadow-inner">
+                <button onclick="switchRole('home')" id="nav-btn-home" class="px-4 py-2 rounded-full text-xs font-extrabold transition-all flex items-center gap-2 text-[#fdfbf7]/60 hover:text-white hover:bg-[#3d2b1f]">
+                    <span>🚪</span><span class="hidden md:inline">EXIT / HOME</span>
+                </button>
+                <button onclick="switchRole('admin')" id="nav-btn-admin" class="px-4 py-2 rounded-full text-xs font-extrabold transition-all flex items-center gap-2 text-[#fdfbf7]/60 hover:text-white hover:bg-[#3d2b1f]">
+                    <span>⚙️</span><span class="hidden md:inline">ADMIN</span>
+                </button>
+                <button onclick="switchRole('staff')" id="nav-btn-staff" class="px-4 py-2 rounded-full text-xs font-extrabold transition-all flex items-center gap-2 text-[#fdfbf7]/60 hover:text-white hover:bg-[#3d2b1f]">
+                    <span>🔪</span><span class="hidden md:inline">PREP STAFF</span>
+                </button>
+                <button onclick="switchRole('chef')" id="nav-btn-chef" class="px-4 py-2 rounded-full text-xs font-extrabold transition-all flex items-center gap-2 text-[#fdfbf7]/60 hover:text-white hover:bg-[#3d2b1f]">
+                    <span>🔥</span><span class="hidden md:inline">CHIEF</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- LIVE ANNOUNCEMENT MARQUEE -->
+    <div id="marquee-container" class="hidden w-full bg-[#d84315] text-[#fdfbf7] py-1.5 overflow-hidden border-b border-[#3d2b1f] shadow-md z-30 relative">
+        <div class="animate-marquee text-xs font-bold tracking-wider uppercase">
+            ⚠️ <span id="marquee-text"></span>
+        </div>
+    </div>
+
+    <!-- MAIN VIEWPORT -->
+    <main id="main-view" class="flex-1 max-w-[1400px] w-full mx-auto p-4 lg:p-8 pb-24"></main>
+
+    <!-- MODAL CONTAINER (For Recipe Manager) -->
+    <div id="modal-overlay" class="fixed inset-0 bg-[#000000]/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+        <div id="modal-content" class="bg-card-teak border-2 border-brass rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-golden-lg p-6">
+            <!-- Dynamic Modal Content -->
+        </div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // 1. DATA & STATE INITIALIZATION
+        // ============================================================================
+        const STORAGE_KEY = 'modak_temple_v1';
+
+        const PRELOADED_RECIPES = {
+            'SM': { code: 'SM', name: 'Sambar', stationType: 'BURNER', prepItems: [{item:'Toor Dal', action:'Measure', weight:'1kg', tray:'Tray SM-1'}], chefSteps: [{title:'Boil Dal', duration:1200, voice:'Boil Dal', instruction:'Boil Tray SM-1'}] },
+            'CTC': { code: 'CTC', name: 'Coconut Chutney', stationType: 'PREP_ONLY', prepItems: [{item:'Grated Coconut', action:'Grate', weight:'600g', tray:'Tray CTC-1'}, {item:'Green Chilli', action:'Measure', weight:'30g', tray:'Tray CTC-2'}], chefSteps: [] },
+            'TMC': { code: 'TMC', name: 'Tomato Chutney', stationType: 'BURNER', prepItems: [{item:'Oil', action:'Measure', weight:'50ml', tray:'Tray TMC-1'}, {item:'TMC Veg', action:'Chop', weight:'1.5kg', tray:'Tray TMC-2'}, {item:'TMC Mix', action:'Measure', weight:'450g', tray:'Tray TMC-3'}], chefSteps: [{title:'Hot Kadai', duration:20, voice:'Step 1. Hot Kadai.', instruction:'Heat Kadai'}, {title:'Add Oil', duration:30, voice:'Step 2. Add Oil.', instruction:'Add Tray TMC-1'}, {title:'TMC Veg', duration:300, voice:'Step 3. Roast Vegetables.', instruction:'Add Tray TMC-2'}, {title:'TMC Mix', duration:300, voice:'Step 4. Add Mix.', instruction:'Add Tray TMC-3'}] },
+            'KS': { code: 'KS', name: 'Kesari', stationType: 'BURNER', prepItems: [{item:'Ghee', action:'Measure', weight:'50g', tray:'Tray KS-1'}, {item:'Rava', action:'Measure', weight:'200g', tray:'Tray KS-2'}, {item:'Water/Color', action:'Measure', weight:'200ml', tray:'Tray KS-3'}, {item:'Sugar', action:'Measure', weight:'150g', tray:'Tray KS-4'}], chefSteps: [{title:'Hot Kadai', duration:20, voice:'Hot Kadai', instruction:'Heat'}, {title:'Add Ghee', duration:20, voice:'Add Ghee', instruction:'Tray KS-1'}, {title:'Rava', duration:60, voice:'Add Rava', instruction:'Tray KS-2'}, {title:'Water', duration:120, voice:'Add Water', instruction:'Tray KS-3'}, {title:'Sugar', duration:60, voice:'Add Sugar', instruction:'Tray KS-4'}, {title:'Ghee Finish', duration:60, voice:'Finish with Ghee', instruction:'Remaining Ghee'}] },
+            'KP': { code: 'KP', name: 'Kadum Payasam', stationType: 'BURNER', prepItems: [{item:'Rice', action:'Measure', weight:'1kg', tray:'Tray KP-1'}, {item:'Jaggery', action:'Measure', weight:'800ml', tray:'Tray KP-2'}], chefSteps: [{title:'Cooker Boil', duration:1200, voice:'Boil Cooker', instruction:'Boil KP-1'}, {title:'Rest', duration:600, voice:'Rest cooker', instruction:'Rest'}, {title:'Jaggery', duration:180, voice:'Add Jaggery', instruction:'Tray KP-2'}, {title:'Cardamom/Ghee', duration:300, voice:'Slow cook', instruction:'Add flavorings'}] },
+            'MS': { code: 'MS', name: 'Masala Koot', stationType: 'BURNER', prepItems: [{item:'Oil', action:'Measure', weight:'50ml', tray:'Tray MS-1'}, {item:'MS Mix', action:'Measure', weight:'50g', tray:'Tray MS-2'}, {item:'MSV Veg', action:'Cut', weight:'1kg', tray:'Tray MS-3'}, {item:'Turmeric', action:'Measure', weight:'20g', tray:'Tray MS-4'}, {item:'Water', action:'Measure', weight:'400ml', tray:'Tray MS-5'}, {item:'Potato Mix', action:'Measure', weight:'280g', tray:'Tray MS-6'}], chefSteps: [{title:'Hot Kadai', duration:20, voice:'Hot Kadai', instruction:'Heat'}, {title:'Oil', duration:60, voice:'Add Oil', instruction:'MS-1'}, {title:'Mix 1', duration:60, voice:'Add Mix', instruction:'MS-2'}, {title:'Veg & Salt', duration:1200, voice:'Add Veg', instruction:'MS-3'}, {title:'Turmeric', duration:120, voice:'Add Turmeric', instruction:'MS-4'}, {title:'Water', duration:300, voice:'Add Water', instruction:'MS-5'}, {title:'Potato', duration:120, voice:'Add Potato mix', instruction:'MS-6'}] }
+        };
+
+        let state = {
+            role: 'home',
+            shift: 'Morning',
+            announcement: '',
+            recipes: JSON.parse(JSON.stringify(PRELOADED_RECIPES)),
+            demands: { 'Morning': { 'SM':1, 'CTC':1, 'TMC':1, 'KS':1, 'KP':1, 'MS':1 }, 'Evening': {} },
+            prepChecks: {},
+            trayReady: {},
+            burners: {
+                1: { code: 'TMC', step: 0, timeLeft: 20, running: false, autoNext: true, complete: false },
+                2: { code: 'KS', step: 0, timeLeft: 20, running: false, autoNext: true, complete: false },
+                3: { code: 'MS', step: 0, timeLeft: 20, running: false, autoNext: true, complete: false }
+            },
+            staffTimers: { 'CTC': { running: false, timeLeft: 60 } },
+            adminTab: 'monitor' // monitor, demand, recipe
+        };
+
+        let burnerIntervals = { 1: null, 2: null, 3: null };
+        let staffInterval = null;
+
+        function loadState(triggerRender = true) {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    state = { ...state, ...parsed };
+                }
+            } catch (e) { console.warn("Storage read error", e); }
+            if (triggerRender) renderApp();
+        }
+
+        function saveState() {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } 
+            catch (e) { console.warn("Storage save error", e); }
+        }
+
+        // Cross-tab Synchronization
+        window.addEventListener('storage', (e) => {
+            if (e.key === STORAGE_KEY) {
+                loadState(false);
+                syncRunningTimers(); // Adjust local intervals based on new state
+                renderApp();
+            }
+        });
+
+        function syncRunningTimers() {
+            // If another tab started a burner, start the local interval to keep UI ticking
+            [1, 2, 3].forEach(bId => {
+                const b = state.burners[bId];
+                if (b.running && !burnerIntervals[bId]) {
+                    startBurnerInterval(bId, false); // false = don't saveState inside, just tick
+                } else if (!b.running && burnerIntervals[bId]) {
+                    clearInterval(burnerIntervals[bId]);
+                    burnerIntervals[bId] = null;
+                }
+            });
+        }
+
+        // ============================================================================
+        // 2. UTILITIES & VOICE ENGINE
+        // ============================================================================
+        function showToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            document.getElementById('toast-icon').textContent = type === 'alert' ? '⚠️' : '✨';
+            t.className = `fixed top-4 left-1/2 transform -translate-x-1/2 z-[200] transition-all duration-300 bg-card-teak border ${type==='alert'?'border-[#d84315] text-[#d84315]':'border-brass text-cream'} px-6 py-3 rounded-full shadow-golden flex items-center gap-3 text-sm font-bold pointer-events-none translate-y-0 opacity-100`;
+            
+            setTimeout(() => {
+                t.classList.remove('translate-y-0', 'opacity-100');
+                t.classList.add('-translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+
+        function formatTime(s) {
+            const m = Math.floor(Math.max(0, s) / 60).toString().padStart(2, '0');
+            const r = (Math.max(0, s) % 60).toString().padStart(2, '0');
+            return `${m}:${r}`;
+        }
+
+        function escapeHTML(str) { return String(str||'').replace(/[&<>'"]/g, t => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[t])); }
+
+        // FIFO Voice Queue
+        let voiceQueue = [];
+        let isSpeaking = false;
+
+        function playChime(burnerId) {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                const ctx = new AudioCtx();
+                const count = Math.min(3, Math.max(1, burnerId));
+                const freqs = [740, 880, 1046.5];
+                
+                for (let i = 0; i < count; i++) {
+                    const start = ctx.currentTime + i * 0.2;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freqs[burnerId-1] || 880, start);
+                    gain.gain.setValueAtTime(0.2, start);
+                    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.15);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(start);
+                    osc.stop(start + 0.15);
+                }
+            } catch(e) {}
+        }
+
+        function enqueueVoice(text, burnerId = 1) {
+            voiceQueue.push({ text, burnerId });
+            processVoiceQueue();
+        }
+
+        function processVoiceQueue() {
+            if (isSpeaking || voiceQueue.length === 0) return;
+            isSpeaking = true;
+            const item = voiceQueue.shift();
+            
+            playChime(item.burnerId);
+            setTimeout(() => {
+                if (!window.speechSynthesis) {
+                    isSpeaking = false; setTimeout(processVoiceQueue, 100); return;
+                }
+                const utterance = new SpeechSynthesisUtterance(item.text);
+                utterance.rate = 0.95;
+                utterance.onend = () => { isSpeaking = false; setTimeout(processVoiceQueue, 200); };
+                utterance.onerror = () => { isSpeaking = false; setTimeout(processVoiceQueue, 200); };
+                try { window.speechSynthesis.speak(utterance); } catch(e) { isSpeaking = false; processVoiceQueue(); }
+            }, (item.burnerId * 200) + 100);
+        }
+
+        // ============================================================================
+        // 3. CORE RENDERING
+        // ============================================================================
+        function switchRole(role) {
+            state.role = role;
+            saveState();
+            renderApp();
+            
+            ['home', 'admin', 'staff', 'chef'].forEach(r => {
+                const btn = document.getElementById(`nav-btn-${r}`);
+                if(btn) {
+                    if (r === role) {
+                        btn.classList.add('bg-marigold', 'shadow-md');
+                        btn.classList.remove('text-[#fdfbf7]/60', 'hover:bg-[#3d2b1f]');
+                    } else {
+                        btn.classList.remove('bg-marigold', 'shadow-md');
+                        btn.classList.add('text-[#fdfbf7]/60', 'hover:bg-[#3d2b1f]');
+                    }
+                }
+            });
+        }
+
+        function renderApp() {
+            // Render Marquee
+            const marq = document.getElementById('marquee-container');
+            const marqText = document.getElementById('marquee-text');
+            if (state.announcement && (state.role === 'staff' || state.role === 'chef')) {
+                marqText.textContent = state.announcement;
+                marq.classList.remove('hidden');
+            } else {
+                marq.classList.add('hidden');
+            }
+
+            const main = document.getElementById('main-view');
+            if (state.role === 'home') renderHome(main);
+            else if (state.role === 'admin') renderAdmin(main);
+            else if (state.role === 'staff') renderStaff(main);
+            else if (state.role === 'chef') renderChef(main);
+        }
+
+        // ============================================================================
+        // PORTALS
+        // ============================================================================
+        function renderHome(container) {
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center min-h-[75vh] space-y-10 animate-fade-in">
+                    <div class="text-center space-y-4">
+                        <div class="w-24 h-24 bg-gradient-to-br from-[#ff6f00] to-[#cda434] text-[#18110c] rounded-full mx-auto flex items-center justify-center text-5xl font-black font-mono-code shadow-golden-lg mb-6 border-4 border-[#3d2b1f]">M</div>
+                        <h2 class="text-3xl md:text-5xl font-black tracking-widest text-brass uppercase">Modak Food Lab</h2>
+                        <p class="text-[#fdfbf7]/60 tracking-wider">Select Portal</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
+                        <button onclick="switchRole('admin')" class="bg-card-teak border border-brass/30 hover:border-brass rounded-3xl p-8 flex flex-col items-center text-center transition-all group shadow-golden hover:-translate-y-1">
+                            <span class="text-5xl mb-4 group-hover:scale-110 transition-transform">⚙️</span>
+                            <h3 class="text-xl font-bold text-cream mb-2 uppercase tracking-wide">Admin Portal</h3>
+                        </button>
+                        <button onclick="switchRole('staff')" class="bg-card-teak border border-brass/30 hover:border-brass rounded-3xl p-8 flex flex-col items-center text-center transition-all group shadow-golden hover:-translate-y-1">
+                            <span class="text-5xl mb-4 group-hover:scale-110 transition-transform">🔪</span>
+                            <h3 class="text-xl font-bold text-cream mb-2 uppercase tracking-wide">Prep Staff</h3>
+                        </button>
+                        <button onclick="switchRole('chef')" class="bg-card-teak border border-brass/30 hover:border-brass rounded-3xl p-8 flex flex-col items-center text-center transition-all group shadow-golden hover:-translate-y-1">
+                            <span class="text-5xl mb-4 group-hover:scale-110 transition-transform">🔥</span>
+                            <h3 class="text-xl font-bold text-cream mb-2 uppercase tracking-wide">Chief Station</h3>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ----------------------------------------------------------------------------
+        // ADMIN PORTAL
+        // ----------------------------------------------------------------------------
+        function renderAdmin(container) {
+            let html = `
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h2 class="text-2xl font-black text-brass uppercase tracking-wider">Admin Control</h2>
+                        <p class="text-[#fdfbf7]/60 text-sm">Centralized Kitchen Management</p>
+                    </div>
+                    <div class="flex bg-card-teak p-1 rounded-full border border-[#3d2b1f] shadow-inner">
+                        <button onclick="setAdminTab('monitor')" class="px-4 py-2 rounded-full text-xs font-bold transition-all ${state.adminTab==='monitor'?'bg-marigold':'text-cream/60 hover:text-white'}">Live Monitor</button>
+                        <button onclick="setAdminTab('demand')" class="px-4 py-2 rounded-full text-xs font-bold transition-all ${state.adminTab==='demand'?'bg-marigold':'text-cream/60 hover:text-white'}">Shift Demand</button>
+                        <button onclick="setAdminTab('recipe')" class="px-4 py-2 rounded-full text-xs font-bold transition-all ${state.adminTab==='recipe'?'bg-marigold':'text-cream/60 hover:text-white'}">Recipes</button>
+                    </div>
+                </div>
+            `;
+
+            if (state.adminTab === 'monitor') {
+                html += `
+                    <!-- Global Announcement -->
+                    <div class="bg-card-teak border border-brass rounded-3xl p-6 shadow-golden mb-8">
+                        <h3 class="text-sm font-bold text-brass uppercase tracking-wider mb-3">Live Global Announcement</h3>
+                        <div class="flex gap-3">
+                            <input type="text" id="admin-announcement" placeholder="Type message to broadcast to staff/chief..." value="${escapeHTML(state.announcement)}" class="flex-1 bg-[#18110c] border border-[#3d2b1f] rounded-full px-5 py-3 text-sm focus:border-marigold outline-none text-cream transition-colors">
+                            <button onclick="updateAnnouncement()" class="px-6 py-3 rounded-full font-bold bg-marigold text-teak shadow-md hover:opacity-90 transition-opacity uppercase text-xs tracking-wider">Broadcast</button>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Prep Status -->
+                        <div class="bg-card-teak border border-[#3d2b1f] rounded-3xl p-6 shadow-golden">
+                            <h3 class="text-sm font-bold text-brass uppercase tracking-wider mb-4 border-b border-[#3d2b1f] pb-2">Prep Staff Status (${state.shift})</h3>
+                            <div class="space-y-3">
+                `;
+                Object.keys(state.demands[state.shift] || {}).forEach(code => {
+                    const demand = state.demands[state.shift][code];
+                    if (demand > 0) {
+                        const isReady = !!state.trayReady[`${state.shift}_${code}`];
+                        html += `
+                            <div class="flex items-center justify-between p-3 rounded-xl bg-[#18110c] border ${isReady ? 'border-green-600/50' : 'border-[#3d2b1f]'}">
+                                <span class="font-mono-code font-bold text-cream">${code} <span class="text-xs text-cream/50">(${state.recipes[code]?.name || ''})</span></span>
+                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${isReady ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/10 text-amber-500'}">${isReady ? '✓ READY' : 'PENDING'}</span>
+                            </div>
+                        `;
+                    }
+                });
+                html += `</div></div>`;
+
+                // Chief Status
+                html += `
+                    <!-- Chief Status -->
+                    <div class="bg-card-teak border border-[#3d2b1f] rounded-3xl p-6 shadow-golden">
+                        <h3 class="text-sm font-bold text-brass uppercase tracking-wider mb-4 border-b border-[#3d2b1f] pb-2">Chief Burner Status</h3>
+                        <div class="space-y-4">
+                `;
+                [1,2,3].forEach(bId => {
+                    const b = state.burners[bId];
+                    const stepText = state.recipes[b.code]?.chefSteps[b.step]?.title || 'Done';
+                    html += `
+                        <div class="flex items-center justify-between p-4 rounded-xl bg-[#18110c] border ${b.running ? 'border-marigold' : 'border-[#3d2b1f]'}">
+                            <div class="flex items-center gap-3">
+                                <span class="w-8 h-8 rounded-full bg-brass text-[#18110c] font-black flex items-center justify-center text-xs">B${bId}</span>
+                                <div>
+                                    <div class="font-mono-code font-bold text-marigold">${b.code}</div>
+                                    <div class="text-xs text-cream/60">Step ${b.step + 1}: ${stepText}</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-mono-code font-black text-lg ${b.running ? 'text-marigold' : 'text-cream/50'}">${formatTime(b.timeLeft)}</div>
+                                <span class="text-[10px] font-bold uppercase ${b.running ? 'text-green-400' : b.complete ? 'text-blue-400' : 'text-amber-500'}">${b.running ? 'RUNNING' : b.complete ? 'COMPLETE' : 'PAUSED'}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div></div></div>`;
+                
+            } else if (state.adminTab === 'demand') {
+                html += `
+                    <div class="flex items-center gap-2 mb-6">
+                        <span class="text-sm text-cream/60 uppercase font-bold">Active Shift:</span>
+                        <div class="flex bg-card-teak p-1 rounded-full border border-[#3d2b1f]">
+                            <button onclick="setAdminShift('Morning')" class="px-3 py-1 rounded-full text-xs font-bold ${state.shift==='Morning'?'bg-brass text-teak':'text-cream/60'}">Morning</button>
+                            <button onclick="setAdminShift('Evening')" class="px-3 py-1 rounded-full text-xs font-bold ${state.shift==='Evening'?'bg-brass text-teak':'text-cream/60'}">Evening</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                `;
+                Object.keys(state.recipes).forEach(code => {
+                    const r = state.recipes[code];
+                    const d = state.demands[state.shift][code] || 0;
+                    html += `
+                        <div class="bg-card-teak border border-[#3d2b1f] rounded-3xl p-5 shadow-golden">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <h4 class="font-bold text-cream">${code} - ${escapeHTML(r.name)}</h4>
+                                    <span class="text-[10px] uppercase text-brass">${r.stationType}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="number" min="0" onchange="updateDemand('${code}', this.value)" value="${d}" class="w-full bg-[#18110c] border border-[#3d2b1f] rounded-xl px-4 py-2 text-marigold font-mono-code font-bold outline-none focus:border-marigold text-right">
+                                <span class="text-xs text-cream/50 font-bold">Batches</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            } else if (state.adminTab === 'recipe') {
+                html += `
+                    <div class="mb-6 flex justify-end">
+                        <button onclick="openRecipeModal()" class="px-5 py-2.5 rounded-full font-bold bg-marigold text-teak shadow-md hover:opacity-90 transition-opacity uppercase text-xs tracking-wider">+ Add New Recipe</button>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                `;
+                Object.keys(state.recipes).forEach(code => {
+                    const r = state.recipes[code];
+                    html += `
+                        <div class="bg-card-teak border border-[#3d2b1f] rounded-3xl p-5 shadow-golden flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <h4 class="font-bold text-cream text-lg font-mono-code">${code} <span class="text-sm font-sans text-cream/80">- ${escapeHTML(r.name)}</span></h4>
+                                    <span class="px-2 py-1 bg-[#18110c] border border-[#3d2b1f] rounded text-[9px] uppercase text-brass">${r.stationType}</span>
+                                </div>
+                                <p class="text-xs text-cream/50 mb-4">${r.prepItems.length} Ingredients • ${r.chefSteps.length} Steps</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="openRecipeModal('${code}')" class="flex-1 py-2 bg-[#18110c] border border-brass text-brass rounded-full text-xs font-bold uppercase hover:bg-brass hover:text-teak transition">Edit</button>
+                                <button onclick="deleteRecipe('${code}')" class="px-4 py-2 bg-[#18110c] border border-[#d84315] text-[#d84315] rounded-full text-xs font-bold uppercase hover:bg-[#d84315] hover:text-cream transition">Delete</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        window.setAdminTab = function(tab) { state.adminTab = tab; saveState(); renderApp(); }
+        window.setAdminShift = function(s) { state.shift = s; saveState(); renderApp(); showToast(`Viewing ${s} Demand`); }
+        window.updateAnnouncement = function() {
+            state.announcement = document.getElementById('admin-announcement').value.trim();
+            saveState();
+            showToast('Announcement Broadcasted');
+            renderApp();
+        }
+        window.updateDemand = function(code, val) {
+            if(!state.demands[state.shift]) state.demands[state.shift] = {};
+            state.demands[state.shift][code] = Math.max(0, parseInt(val)||0);
+            saveState();
+            showToast(`Updated demand for ${code}`);
+        }
+        window.deleteRecipe = function(code) {
+            if(confirm(`Delete recipe ${code}?`)) {
+                delete state.recipes[code];
+                saveState();
+                renderApp();
+                showToast(`Deleted ${code}`);
+            }
+        }
+
+        // Simple JSON-based Recipe Editor for robustness in single file
+        window.openRecipeModal = function(code = '') {
+            const isEdit = !!code;
+            const r = isEdit ? state.recipes[code] : { code: '', name: '', stationType: 'BURNER', prepItems: [], chefSteps: [] };
+            
+            const modalContent = `
+                <h2 class="text-xl font-black text-brass uppercase tracking-wider mb-4">${isEdit ? 'Edit' : 'Add'} Recipe</h2>
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label class="block text-xs font-bold text-cream/70 mb-1">JSON Format</label>
+                        <textarea id="recipe-json" rows="12" class="w-full bg-[#18110c] border border-[#3d2b1f] rounded-xl p-3 text-marigold font-mono-code text-xs outline-none focus:border-marigold">${JSON.stringify(r, null, 2)}</textarea>
+                        <p class="text-[10px] text-cream/50 mt-2">Edit the JSON object carefully. Must include code, name, stationType, prepItems, and chefSteps.</p>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button onclick="closeModal()" class="px-5 py-2.5 rounded-full font-bold bg-[#18110c] text-cream border border-[#3d2b1f] hover:border-brass transition uppercase text-xs tracking-wider">Cancel</button>
+                    <button onclick="saveRecipeJson()" class="px-5 py-2.5 rounded-full font-bold bg-marigold text-teak shadow-md hover:opacity-90 transition uppercase text-xs tracking-wider">Save Recipe</button>
+                </div>
+            `;
+            document.getElementById('modal-content').innerHTML = modalContent;
+            document.getElementById('modal-overlay').classList.remove('hidden');
+        }
+        window.closeModal = function() { document.getElementById('modal-overlay').classList.add('hidden'); }
+        window.saveRecipeJson = function() {
+            try {
+                const parsed = JSON.parse(document.getElementById('recipe-json').value);
+                if(!parsed.code || !parsed.name) throw new Error("Missing code or name");
+                state.recipes[parsed.code] = parsed;
+                if(!state.demands['Morning'][parsed.code]) state.demands['Morning'][parsed.code] = 0;
+                if(!state.demands['Evening'][parsed.code]) state.demands['Evening'][parsed.code] = 0;
+                saveState();
+                closeModal();
+                renderApp();
+                showToast(`Saved recipe ${parsed.code}`);
+            } catch(e) {
+                alert("Invalid JSON: " + e.message);
+            }
+        }
+
+        // ----------------------------------------------------------------------------
+        // STAFF PORTAL
+        // ----------------------------------------------------------------------------
+        function renderStaff(container) {
+            let html = `
+                <div class="mb-6 flex justify-between items-end">
+                    <div>
+                        <h2 class="text-2xl font-black text-brass uppercase tracking-wider">Prep Staff</h2>
+                        <p class="text-[#fdfbf7]/60 text-sm">Ingredient Checklists & Grinding - ${state.shift} Shift</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            `;
+
+            let hasDemands = false;
+            Object.keys(state.demands[state.shift] || {}).forEach(code => {
+                const demand = state.demands[state.shift][code];
+                if (demand > 0 && state.recipes[code]) {
+                    hasDemands = true;
+                    const r = state.recipes[code];
+                    const isReady = !!state.trayReady[`${state.shift}_${code}`];
+
+                    html += `
+                        <div class="bg-card-teak border ${isReady ? 'border-green-600/60' : 'border-[#3d2b1f]'} rounded-3xl p-5 shadow-golden flex flex-col relative overflow-hidden transition-colors">
+                            ${isReady ? '<div class="absolute inset-0 bg-green-900/10 pointer-events-none"></div>' : ''}
+                            <div class="relative z-10 flex-1">
+                                <div class="flex items-center justify-between mb-4 border-b border-[#3d2b1f] pb-3">
+                                    <div class="flex items-center gap-3">
+                                        <span class="px-3 py-1 rounded-xl bg-gradient-to-r from-marigold to-brass text-teak font-mono-code font-black text-lg shadow-md">${code}</span>
+                                        <div>
+                                            <h4 class="font-bold text-cream text-md">${escapeHTML(r.name)}</h4>
+                                            <span class="text-[10px] text-cream/50">Demand: ${demand} batches</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="space-y-2 mb-6">
+                    `;
+
+                    r.prepItems.forEach((item, idx) => {
+                        const checkKey = `${state.shift}_${code}_${idx}`;
+                        const isChecked = !!state.prepChecks[checkKey];
+                        html += `
+                            <label class="flex items-center justify-between p-2.5 rounded-xl bg-[#18110c] border ${isChecked ? 'border-green-600/40 opacity-50' : 'border-[#3d2b1f]'} cursor-pointer hover:border-brass/50 transition">
+                                <div class="flex items-center gap-3">
+                                    <input type="checkbox" onchange="togglePrepCheck('${checkKey}')" ${isChecked?'checked':''} class="w-4 h-4 accent-green-600 rounded">
+                                    <div>
+                                        <span class="block text-sm font-bold ${isChecked?'line-through text-cream/50':'text-cream'}">${escapeHTML(item.item)}</span>
+                                        <div class="flex gap-2 mt-0.5">
+                                            <span class="text-[9px] text-brass uppercase font-bold">${item.action}</span>
+                                            <span class="text-[9px] text-marigold font-mono-code font-bold">${item.tray}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="font-mono-code font-bold text-cream/80 text-sm">${item.weight}</span>
+                            </label>
+                        `;
+                    });
+
+                    html += `</div>`;
+
+                    if (code === 'CTC') {
+                        const t = state.staffTimers['CTC'];
+                        html += `
+                            <div class="mb-5 p-4 rounded-2xl bg-[#18110c] border border-brass/30 text-center">
+                                <span class="block text-[10px] font-bold text-brass uppercase tracking-wider mb-2">Grinder Timer (1 Min)</span>
+                                <div class="font-mono-code text-4xl font-black text-marigold mb-3">${formatTime(t.timeLeft)}</div>
+                                <button onclick="toggleStaffTimer('CTC')" class="w-full py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition ${t.running ? 'bg-[#18110c] border border-marigold text-marigold' : 'bg-marigold text-teak shadow-md hover:bg-brass'}">
+                                    ${t.running ? '⏸ PAUSE' : '▶ START GRINDING'}
+                                </button>
+                            </div>
+                        `;
+                    }
+
+                    html += `
+                            </div>
+                            <button onclick="toggleTrayReady('${code}')" class="relative z-10 w-full py-3.5 rounded-full font-black text-xs uppercase tracking-wider transition shadow-md ${isReady ? 'bg-[#18110c] text-cream/50 border border-[#3d2b1f]' : 'bg-green-600 text-cream hover:bg-green-500'}">
+                                ${isReady ? 'Undo Handoff' : '✓ Mark Trays Ready'}
+                            </button>
+                        </div>
+                    `;
+                }
+            });
+
+            if (!hasDemands) html += `<div class="col-span-full text-center text-cream/50 py-10 font-bold">No demands set for ${state.shift} shift.</div>`;
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        window.togglePrepCheck = function(key) { state.prepChecks[key] = !state.prepChecks[key]; saveState(); renderApp(); }
+        window.toggleTrayReady = function(code) { 
+            const key = `${state.shift}_${code}`;
+            state.trayReady[key] = !state.trayReady[key]; 
+            saveState(); 
+            renderApp();
+            showToast(state.trayReady[key] ? `${code} Ready for Chief` : `Handoff Reversed`);
+        }
+
+        window.toggleStaffTimer = function(code) {
+            const t = state.staffTimers[code];
+            if (t.timeLeft <= 0) t.timeLeft = 60;
+            t.running = !t.running;
+            saveState();
+            
+            if (t.running) {
+                staffInterval = setInterval(() => {
+                    if (state.staffTimers[code].timeLeft > 0) {
+                        state.staffTimers[code].timeLeft--;
+                        renderApp(); // Local render for tick
+                    } else {
+                        clearInterval(staffInterval);
+                        state.staffTimers[code].running = false;
+                        saveState();
+                        showToast(`${code} Grinding Complete!`);
+                        enqueueVoice(`Grinding complete for ${code}.`, 1);
+                        renderApp();
+                    }
+                }, 1000);
+            } else {
+                clearInterval(staffInterval);
+            }
+            renderApp();
+        }
+
+        // ----------------------------------------------------------------------------
+        // CHIEF PORTAL (3-Burner)
+        // ----------------------------------------------------------------------------
+        function renderChef(container) {
+            const burnerCodes = Object.keys(state.recipes).filter(c => state.recipes[c].stationType === 'BURNER');
+            
+            let html = `
+                <!-- Voice Simulator Header -->
+                <div class="bg-card-teak border border-brass rounded-3xl p-4 mb-6 shadow-golden flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-marigold to-brass text-teak rounded-full flex items-center justify-center text-2xl shadow-inner">🎙️</div>
+                        <div>
+                            <h3 class="font-black text-cream text-sm uppercase tracking-wider">Speech-to-Action</h3>
+                            <p class="text-xs text-brass">Tap commands to simulate voice control</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="simVoice('start')" class="px-4 py-2 bg-[#18110c] text-green-500 border border-green-500/50 rounded-full font-mono-code font-bold text-xs hover:bg-green-500/10 transition">🗣️ "Start"</button>
+                        <button onclick="simVoice('next')" class="px-4 py-2 bg-[#18110c] text-marigold border border-marigold/50 rounded-full font-mono-code font-bold text-xs hover:bg-marigold/10 transition">🗣️ "Next Step"</button>
+                        <button onclick="simVoice('pause')" class="px-4 py-2 bg-[#18110c] text-red-400 border border-red-400/50 rounded-full font-mono-code font-bold text-xs hover:bg-red-400/10 transition">🗣️ "Pause"</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            `;
+
+            [1, 2, 3].forEach(bId => {
+                const b = state.burners[bId];
+                if (!burnerCodes.includes(b.code)) b.code = burnerCodes[0] || '';
+                
+                const r = state.recipes[b.code] || { chefSteps: [] };
+                const steps = r.chefSteps;
+                const sIdx = Math.min(b.step, Math.max(0, steps.length - 1));
+                const currentStep = steps[sIdx] || { title: 'No Steps', instruction: 'N/A' };
+                const isPrepReady = !!state.trayReady[`${state.shift}_${b.code}`];
+
+                html += `
+                    <div id="card-b${bId}" class="bg-card-teak border-2 ${b.running ? 'border-marigold burner-active-ring' : b.complete ? 'border-green-600' : 'border-[#3d2b1f]'} rounded-3xl overflow-hidden shadow-golden flex flex-col transition-all">
+                        
+                        <!-- Burner Header -->
+                        <div class="p-4 bg-[#18110c] border-b border-[#3d2b1f] flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <span class="w-8 h-8 rounded-full ${b.running ? 'bg-marigold text-teak' : 'bg-card-teak text-brass border border-brass'} font-mono-code font-black flex items-center justify-center shadow-inner">B${bId}</span>
+                                <span class="text-xs font-black text-cream uppercase tracking-wider">Burner ${bId}</span>
+                            </div>
+                            <button onclick="toggleAutoNext(${bId})" class="px-3 py-1 rounded-full font-mono-code text-[9px] font-black border uppercase tracking-wider ${b.autoNext ? 'bg-green-600/20 text-green-400 border-green-600/50' : 'bg-card-teak text-cream/50 border-[#3d2b1f]'}">
+                                ⚡ Auto: ${b.autoNext ? 'ON' : 'OFF'}
+                            </button>
+                        </div>
+                        
+                        <!-- Code Selection & Status -->
+                        <div class="p-4 border-b border-[#3d2b1f] bg-[#1c140f]">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-[10px] font-bold text-cream/50 uppercase tracking-widest">Active Recipe:</span>
+                                ${isPrepReady ? `<span class="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-green-500/20 text-green-400 border border-green-500/30">✓ PREP READY</span>` : `<span class="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/20 text-amber-500 border border-amber-500/30">⏳ PREP PENDING</span>`}
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                ${burnerCodes.map(c => `
+                                    <button onclick="setBurnerCode(${bId}, '${c}')" class="px-3 py-1.5 rounded-full font-mono-code text-[11px] font-bold border transition-colors ${b.code===c ? 'bg-brass text-teak border-brass shadow-md' : 'bg-[#18110c] text-cream/60 border-[#3d2b1f] hover:border-brass/50'}">${c}</button>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Timer & Step Info -->
+                        <div class="p-6 flex-1 flex flex-col items-center justify-center">
+                            <div class="text-[10px] font-mono-code uppercase font-bold text-brass tracking-widest mb-1">STEP ${steps.length ? sIdx + 1 : 0} OF ${steps.length}</div>
+                            <h4 class="text-lg font-black text-cream text-center mb-6">${escapeHTML(currentStep.title)}</h4>
+                            
+                            <div class="font-mono-code text-6xl font-black mb-4 ${b.running ? 'text-marigold' : b.complete ? 'text-green-500' : 'text-cream'} drop-shadow-lg">
+                                ${b.complete ? 'DONE' : formatTime(b.timeLeft)}
+                            </div>
+                            <p class="text-xs font-bold text-cream/70 text-center max-w-[80%]">${b.complete ? 'Process Complete.' : escapeHTML(currentStep.instruction)}</p>
+                        </div>
+
+                        <!-- Controls -->
+                        <div class="p-4 bg-[#18110c] border-t border-[#3d2b1f]">
+                            <button onclick="toggleBurner(${bId})" class="w-full py-4 rounded-full font-black text-xs uppercase tracking-widest shadow-golden transition mb-3 ${b.running ? 'bg-card-teak text-marigold border border-marigold' : 'bg-marigold text-teak hover:bg-brass'}">
+                                ${b.running ? '⏸ Pause Burner' : '▶ Start Burner'}
+                            </button>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button onclick="nextBurnerStep(${bId})" class="py-3 bg-card-teak text-brass font-bold text-xs rounded-full border border-[#3d2b1f] hover:border-brass transition uppercase tracking-wider shadow-sm">⏭ Next</button>
+                                <button onclick="resetBurner(${bId})" class="py-3 bg-card-teak text-cream/60 font-bold text-xs rounded-full border border-[#3d2b1f] hover:text-cream transition uppercase tracking-wider shadow-sm">↺ Reset</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        window.simVoice = function(action) {
+            // Apply to all active burners, or B1 if none active
+            const active = [1,2,3].filter(id => state.burners[id].running);
+            const targets = active.length ? active : [1];
+
+            targets.forEach(id => {
+                const el = document.getElementById(`card-b${id}`);
+                if(el) {
+                    el.style.transform = 'scale(1.02)';
+                    setTimeout(() => el.style.transform = 'scale(1)', 200);
+                }
+                
+                const b = state.burners[id];
+                const r = state.recipes[b.code];
+                const currentVoiceStr = r?.chefSteps[b.step]?.voice || 'Action complete';
+
+                if (action === 'next') nextBurnerStep(id);
+                else if (action === 'pause') { clearInterval(burnerIntervals[id]); burnerIntervals[id]=null; b.running = false; }
+                else if (action === 'start') {
+                    if (!b.running && !b.complete) {
+                        b.running = true;
+                        enqueueVoice(currentVoiceStr, id);
+                        startBurnerInterval(id, true);
+                    }
+                }
+            });
+            if(action === 'pause') saveState();
+            renderApp();
+        }
+
+        window.setBurnerCode = function(bId, code) {
+            clearInterval(burnerIntervals[bId]); burnerIntervals[bId] = null;
+            const r = state.recipes[code];
+            state.burners[bId] = { code: code, step: 0, timeLeft: r?.chefSteps[0]?.duration || 0, running: false, autoNext: state.burners[bId].autoNext, complete: false };
+            saveState(); renderApp();
+        }
+
+        window.toggleAutoNext = function(bId) { state.burners[bId].autoNext = !state.burners[bId].autoNext; saveState(); renderApp(); }
+        window.resetBurner = function(bId) { setBurnerCode(bId, state.burners[bId].code); }
+
+        window.toggleBurner = function(bId) {
+            const b = state.burners[bId];
+            const r = state.recipes[b.code];
+            if (!r || !r.chefSteps.length) return;
+            
+            if (b.complete) { b.complete = false; b.step = 0; b.timeLeft = r.chefSteps[0].duration; }
+
+            b.running = !b.running;
+            saveState();
+
+            if (b.running) {
+                enqueueVoice(r.chefSteps[b.step].voice, bId);
+                startBurnerInterval(bId, true); // true = we triggered it locally
+            } else {
+                clearInterval(burnerIntervals[bId]);
+                burnerIntervals[bId] = null;
+            }
+            renderApp();
+        }
+
+        window.nextBurnerStep = function(bId) {
+            const b = state.burners[bId];
+            const r = state.recipes[b.code];
+            if (!r) return;
+            
+            if (b.step + 1 < r.chefSteps.length) {
+                b.step++;
+                b.timeLeft = r.chefSteps[b.step].duration;
+                b.complete = false;
+                enqueueVoice(r.chefSteps[b.step].voice, bId);
+                if (b.running) startBurnerInterval(bId, true); 
+            } else {
+                clearInterval(burnerIntervals[bId]); burnerIntervals[bId] = null;
+                b.running = false; b.complete = true;
+                enqueueVoice(`Burner ${bId} completed.`, bId);
+            }
+            saveState(); renderApp();
+        }
+
+        function startBurnerInterval(bId, doSave = false) {
+            clearInterval(burnerIntervals[bId]);
+            burnerIntervals[bId] = setInterval(() => {
+                const b = state.burners[bId];
+                if (b.timeLeft > 0) {
+                    b.timeLeft--;
+                    // Only re-render locally for the tick, don't flood localStorage
+                    renderApp(); 
+                } else {
+                    const r = state.recipes[b.code];
+                    if (b.autoNext && b.step + 1 < r.chefSteps.length) {
+                        b.step++;
+                        b.timeLeft = r.chefSteps[b.step].duration;
+                        enqueueVoice(r.chefSteps[b.step].voice, bId);
+                        if(doSave) saveState();
+                        renderApp();
+                    } else {
+                        clearInterval(burnerIntervals[bId]); burnerIntervals[bId] = null;
+                        b.running = false;
+                        if (b.step + 1 >= r.chefSteps.length) {
+                            b.complete = true;
+                            enqueueVoice(`Burner ${bId} completed.`, bId);
+                        } else {
+                            enqueueVoice(`Burner ${bId} waiting.`, bId);
+                        }
+                        if(doSave) saveState();
+                        renderApp();
+                    }
+                }
+            }, 1000);
+        }
+
+        // ============================================================================
+        // INIT
+        // ============================================================================
+        window.onload = () => { loadState(); };
+
+    </script>
+</body>
+</html>
